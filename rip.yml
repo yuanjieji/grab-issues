@@ -1,0 +1,29 @@
+name: download-closure-issues
+on: [workflow_dispatch]   # 手动触发
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: grab
+        run: |
+          sudo apt-get update && sudo apt-get install -y curl jq
+          mkdir issues
+          # 只抓取真正存在的 7 个 ID
+          for id in 983 959 862 818 868 213 803; do
+            curl -fLSs "https://storage.googleapis.com/google-code-archive/v2/code.google.com/closure-compiler/issues/issue-${id}.json" \
+                 -o "issues/issue-${id}.json"
+            echo "✅ issue-${id}.json"
+          done
+          # 可选：生成一份 CSV
+          jq -r '
+            ["report_id","title","state","url"],
+            (.[] | [.id, .ticket.summary, .ticket.status, "https://sourceforge.net/p/jfreechart/bugs/\(.id)/"])
+            | @csv' issues/*.json > issues.csv
+      - name: upload
+        uses: actions/upload-artifact@v3
+        with:
+          name: closure-issues
+          path: |
+            issues/
+            issues.csv
